@@ -1,0 +1,90 @@
+#Variables:
+#Domain Information (leave out the .local .com .org etc.)
+$domainname = 
+$domainadminname = 
+$domainadminpwd = 
+#Local account
+$localadminacct = 
+$localadminpwd = 
+#VPN Configuration
+$vpnadaptername = 
+$vpnhostname = 
+$vpnsecretkey = 
+#OTHER
+$rmmagentfilename = 
+$clientname
+#Static Assignments
+$PCname = hostname
+$pctype = (Get-CimInstance -Class Win32_ComputerSystem).PCSystemType
+$Serial = Get-CimInstance -ClassName Win32_BIOS | Select-Object -ExpandProperty SerialNumber
+
+
+# 1. Create local admin account
+# 2. Run powershell as an administrator
+#_______________________________________________________________________________________________________
+# Workstation Image 
+# - Put ODT on flash drive (D:)
+# - Put Automate agent in client folder, ex. "D:\Client Name\.."
+#_______________________________________________________________________________________________________
+Copy D:\ODT C:\ -Recurse
+Copy "D:\$clientname\$rmmagentfilename" C:\Users\$localadminacct\Downloads
+net user $localadminacct $localadminpwd
+Set-LocalUser -Name "$localadminacct" -PasswordNeverExpires:$true
+#
+#
+#Install Chocolatey
+#
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+#
+#Install software stack
+#
+choco install zoom googlechrome adobereader lenovo-thinkvantage-system-update -y -q
+#
+cd "C:\ODT" 
+.\setup.exe /download installOfficeProPlus32.xml
+.\setup.exe /configure installOfficeProPlus32.xml
+#
+# Powershell will appear to be frozen, allow 10-15 minutes for process to compelete
+#_______________________________________________________________________________________________________
+# CREATE VPN ADAPTER
+#_______________________________________________________________________________________________________
+#
+add-vpnconnection -name "$clientname VPN" -serveraddress $vpnhostname -alluserconnection -encryptionlevel optional -RememberCredential -tunneltype l2tp -l2tppsk "$vpnsecretkey" -authenticationmethod pap -force
+#
+rasdial "$clientname VPN" "$domainname\$domainadminname" "$domainadminpwd"
+#
+#_______________________________________________________________________________________________________
+# ADD PC TO DOMAIN
+#_______________________________________________________________________________________________________
+#
+$User = "$domainname\$domainadminname"
+#
+$Pass= ConvertTo-SecureString -String "$domainadminpwd" -AsPlainText -Force
+#
+$Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Pass
+add-computer –domainname $domainname.$domaintop -Credential  $Credential –force
+#
+#
+#_______________________________________________________________________________________________________
+# RENAME PC
+#_______________________________________________________________________________________________________
+#
+# Determine if is Laptop or Desktop
+if($pctype -eq "2"){
+$type = "LT"
+} else{
+$type = "DT"
+}
+Rename-Computer -ComputerName "$PCName" -NewName "$type-$Serial" -DomainCredential $Credential -force
+#
+#_______________________________________________________________________________________________________
+# INSTALL AUTOMATE AGENT
+#_______________________________________________________________________________________________________
+#
+cd "C:\Users\"$localadminacct"\Downloads"
+.\$rmmagentfilename.exe
+#
+shutdown /r /t 60
+#
+#
+#
