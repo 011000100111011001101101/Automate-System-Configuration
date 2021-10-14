@@ -1,18 +1,18 @@
 #Variables:
 #Domain Information (leave out the .local .com .org etc.)
-$domainname = 
-$domainadminname = 
-$domainadminpwd = 
+$domainname = ""
+$domaintop = ".local"
+$domainadminname = ""
+$domainadminpwd = ""
 #Local account
-$localadminacct = 
-$localadminpwd = 
+$localadminacct = ""
+$localadminpwd = ""
 #VPN Configuration
-$vpnadaptername = 
-$vpnhostname = 
-$vpnsecretkey = 
+$vpnadaptername = ""
+$vpnhostname = ""
+$vpnsecretkey = ""
 #OTHER
-$rmmagentfilename = 
-$clientname
+$clientname = ""
 #Static Assignments
 $PCname = hostname
 $pctype = (Get-CimInstance -Class Win32_ComputerSystem).PCSystemType
@@ -82,7 +82,7 @@ Rename-Computer -ComputerName "$PCName" -NewName "$type-$Serial" -DomainCredenti
 #_______________________________________________________________________________________________________
 #
 cd "C:\Users\"$localadminacct"\Downloads"
-.\$rmmagentfilename.exe
+.\Agent_Installer.exe
 #
 shutdown /r /t 60
 #
